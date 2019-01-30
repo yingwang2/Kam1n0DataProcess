@@ -2,7 +2,8 @@ import math
 import copy
 import logging
 
-def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize):
+def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize, table=None):
+    id = 0
     logger = logging.getLogger()
     logger.info('Bin Chart for Code Size Computing Start') if isCodeSize else logger.info('Bin Chart for Block Size Computing Start')
     initialBins = []
@@ -59,13 +60,18 @@ def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize)
         i += 1
     for i, stage in enumerate(relt):
         for j, bins in enumerate(stage):
-            dbBinsBySize.insert({
-                "min": bins["min"],
-                "max": bins["max"],
-                "count": bins["count"],
-                "stage": i,
-                "binIdx": j
-            })
+            if not table:
+                dbBinsBySize.insert({
+                    "min": bins["min"],
+                    "max": bins["max"],
+                    "count": bins["count"],
+                    "stage": i,
+                    "binIdx": j
+                })
+            else:
+                dbBinsBySize.execute(f'''INSERT INTO {table} VALUES ('{id}', '{bins["min"]}', 
+                    {bins["max"]}, {bins["count"]}, {i}, {j})''')
+                id += 1
 
     # dbBinsBySize.insert({"0": relt})
         logger.info('Bin Chart for Code Size Computing End') if isCodeSize else logger.info(
