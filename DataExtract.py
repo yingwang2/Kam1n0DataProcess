@@ -1,6 +1,7 @@
 import json
 import traceback
 import math
+import logging
 
 class Extract():
     isMongoDB = True
@@ -12,6 +13,7 @@ class Extract():
     similarityRange = [math.inf, -math.inf]
     col = None
     conn = None
+    logger = logging.getLogger()
 
     # def setBinaryIndex(self, binaryId):
     #     if  not binaryId in self.binaryIndexMap:
@@ -36,13 +38,15 @@ class Extract():
 
 
     def extract(self, file_path):
+        self.logger.info('File Path: ' + file_path)
+        self.logger.info('Data Extract Start')
         f = open(file_path)
         try:
-            # i = 0
+            i = 0
             for line in f:
-                # if i == 10:
-                #     return
-                # i = i + 1
+                if i == 3:
+                    return
+                i = i + 1
                 item = json.loads(line)
                 function = item['function']
                 sourceId = function['functionId']
@@ -111,7 +115,8 @@ class Extract():
                         self.id += 1
 
         except Exception:
-            print(traceback.format_exc())
+            exit()
+            self.logger.error('Data Extract Error: ' + traceback.format_exc())
         finally:
             f.close()
-
+        self.logger.info('Data Extract End')

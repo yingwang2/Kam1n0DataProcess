@@ -1,8 +1,10 @@
 import math
 import copy
+import logging
 
-
-def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr):
+def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize):
+    logger = logging.getLogger()
+    logger.info('Bin Chart for Code Size Computing Start') if isCodeSize else logger.info('Bin Chart for Block Size Computing Start')
     initialBins = []
     min = sizeRelt[0][0]
     max = sizeRelt[-1][-1]
@@ -55,4 +57,16 @@ def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr):
         bins = copy.deepcopy(newBins)
 
         i += 1
-    dbBinsBySize.insert({"0": relt})
+    for i, stage in enumerate(relt):
+        for j, bins in enumerate(stage):
+            dbBinsBySize.insert({
+                "min": bins["min"],
+                "max": bins["max"],
+                "count": bins["count"],
+                "stage": i,
+                "binIdx": j
+            })
+
+    # dbBinsBySize.insert({"0": relt})
+        logger.info('Bin Chart for Code Size Computing End') if isCodeSize else logger.info(
+            'Bin Chart for Block Size Computing End')
