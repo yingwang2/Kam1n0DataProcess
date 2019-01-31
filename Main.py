@@ -35,21 +35,36 @@ if (extractFile.isMongoDB):
 
     rawDataName = colName
     col = db[rawDataName]
+    colFunc = db[f'{rawDataName}Functions']
 
     extractFile.col = col
-    extractFile.colFunctions = db[f'{rawDataName}Functions']
+    extractFile.colFunctions = colFunc
 
     for file_path in file_paths:
         if not file_path.endswith('.json'):
             continue
         extractFile.extract(dataDir + file_path)
 
-    logger.info("Indexing Start")
+    logger.info("Indexing similarity start")
     col.create_index("similarity")
+
+    logger.info("Indexing targetFunctionCodeSize start")
     col.create_index("targetFunctionCodeSize")
+
+    logger.info("Indexing cloneFunctionCodeSize start")
     col.create_index("cloneFunctionCodeSize")
+
+    logger.info("Indexing targetFunctionBlockSize start")
     col.create_index("targetFunctionBlockSize")
+
+    logger.info("Indexing cloneFunctionBlockSize start")
     col.create_index("cloneFunctionBlockSize")
+
+    logger.info("Indexing codeSize start")
+    colFunc.create_index("codeSize")
+
+    logger.info("Indexing blockSize start")
+    colFunc.create_index("blockSize")
     logger.info("Indexing End")
 
     codeSizeTreemapName = f"{colName}CodeSizeTreemap"
@@ -66,8 +81,8 @@ if (extractFile.isMongoDB):
 
     binSize = max(math.floor(len(codeSizeArr) / limit), 5)
 
-    countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(codeSizeArr, binSize)
-    countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(blockSizeArr, binSize)
+    countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(colFunc, "codeSize")
+    countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(colFunc, "blockSize")
 
     CreateBinsData.createBins(db[binsByCodeSize], codeSizeRelt, countsCodeSize, binSize, codeSizeArr, True)
     CreateBinsData.createBins(db[binsByBlockSize], blockSizeRelt, countsBlockSize, binSize, blockSizeArr, False)
