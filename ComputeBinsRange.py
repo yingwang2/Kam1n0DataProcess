@@ -7,15 +7,16 @@ def calArr(colFunc, field):
     logger.info("Computing bins start")
     limit = 550
     curSizeArr = colFunc.find().sort(field, pymongo.ASCENDING)
-    logging.info("Get sorted data")
+    logger.info("Get sorted data")
     l = curSizeArr.count()
     logger.info(f"Number of size data: {l}")
     lstSizeArr = list(curSizeArr)
-    logging.info("Convert to list")
+    logger.info("Convert to list")
     sizeArr = [d[field] for d in lstSizeArr]
-    logging.info("Convert to array")
+    logger.info("Convert to array")
+    oriBinSize = max(math.floor(l / limit), 5)
     binSize = max(math.floor(l / limit), 5)
-    logging.info(f"Max bin size {binSize}")
+    logger.info(f"Max bin size {oriBinSize}")
     arr = []
     start = 0
     step = int(math.ceil(l / binSize))
@@ -40,7 +41,7 @@ def calArr(colFunc, field):
         step = int(math.ceil((l - stop) / binSize))
         start = stop
         stop = stop + step
-    logging.info("Start to push results")
+    logger.info("Start to push results")
     # x = []
     # y = []
     counts = []
@@ -51,4 +52,4 @@ def calArr(colFunc, field):
         # print(len(a), a[0], a[-1])
     # print(len(sizeArr), sum([len(a) for a in arr]))
     logger.info("Computing bins end")
-    return counts, relt
+    return counts, relt, oriBinSize, sizeArr

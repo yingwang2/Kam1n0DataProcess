@@ -73,19 +73,20 @@ if (extractFile.isMongoDB):
     binsByCodeSize = f"{colName}BinsByCodeSize"
     binsByBlockSize = f"{colName}BinsByBlockSize"
 
-    codeSizeArr = list(extractFile.codeSizeMap.values())
-    codeSizeArr.sort()
-    blockSizeArr = list(extractFile.blockSizeMap.values())
-    blockSizeArr.sort()
+    # codeSizeArr = list(extractFile.codeSizeMap.values())
+    # codeSizeArr.sort()
+    # blockSizeArr = list(extractFile.blockSizeMap.values())
+    # blockSizeArr.sort()
     similarities = [math.floor(extractFile.similarityRange[0] * 100), math.ceil(extractFile.similarityRange[1] * 100)]
+    logger.info(f"Similarity range: {similarities}")
 
-    binSize = max(math.floor(len(codeSizeArr) / limit), 5)
+    # binSize = max(math.floor(len(codeSizeArr) / limit), 5)
 
-    countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(colFunc, "codeSize")
-    countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(colFunc, "blockSize")
+    countsCodeSize, codeSizeRelt, binCodeSize, codeSizeArr = ComputeBinsRange.calArr(colFunc, "codeSize")
+    countsBlockSize, blockSizeRelt, binBlockSize, blockSizeArr = ComputeBinsRange.calArr(colFunc, "blockSize")
 
-    CreateBinsData.createBins(db[binsByCodeSize], codeSizeRelt, countsCodeSize, binSize, codeSizeArr, True)
-    CreateBinsData.createBins(db[binsByBlockSize], blockSizeRelt, countsBlockSize, binSize, blockSizeArr, False)
+    CreateBinsData.createBins(db[binsByCodeSize], codeSizeRelt, countsCodeSize, binCodeSize, codeSizeArr, True)
+    CreateBinsData.createBins(db[binsByBlockSize], blockSizeRelt, countsBlockSize, binBlockSize, blockSizeArr, False)
 
     CreateTreemapData.setTreemapData(codeSizeRelt, col, True, similarities, db[codeSizeTreemapName])
     CreateTreemapData.setTreemapData(blockSizeRelt, col, False, similarities, db[blockSizeTreemapName])

@@ -74,5 +74,5 @@ def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize,
                 id += 1
 
     # dbBinsBySize.insert({"0": relt})
-        logger.info('Bin Chart for Code Size Computing End') if isCodeSize else logger.info(
+    logger.info('Bin Chart for Code Size Computing End') if isCodeSize else logger.info(
             'Bin Chart for Block Size Computing End')

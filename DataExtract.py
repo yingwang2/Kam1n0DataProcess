@@ -40,11 +40,11 @@ class Extract():
         self.logger.info('Data Extract Start')
         f = open(file_path)
         try:
-            # i = 0
+            i = 0
             for line in f:
-                # if i == 3:
-                #     return
-                # i = i + 1
+                if i == 3:
+                    return
+                i = i + 1
                 item = json.loads(line)
                 function = item['function']
                 sourceId = function['functionId']
