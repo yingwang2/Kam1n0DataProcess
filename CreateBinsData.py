@@ -7,14 +7,13 @@ def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize,
     logger = logging.getLogger()
     logger.info('Bin Chart for Code Size Computing Start') if isCodeSize else logger.info('Bin Chart for Block Size Computing Start')
     initialBins = []
-    min = sizeRelt[0][0]
-    max = sizeRelt[-1][-1]
-    step = int(math.ceil((max - min) / binSize))
+    minSize = sizeRelt[0][0]
+    maxSize = sizeRelt[-1][-1]
+    step = int(math.ceil((maxSize - minSize) / binSize))
     relt = []
 
-    for start in range(min, max, step):
-        stop = start + step if start + step <= max else max
-
+    for start in range(minSize, maxSize, step):
+        stop = start + step if start + step <= maxSize else maxSize
         if stop == max:
             count = len([x for x in sizeArr if (x >= start and x <= stop)])
             end = stop

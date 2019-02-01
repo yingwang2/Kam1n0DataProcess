@@ -35,10 +35,8 @@ if (extractFile.isMongoDB):
 
     rawDataName = colName
     col = db[rawDataName]
-    colFunc = db[f'{rawDataName}Functions']
 
     extractFile.col = col
-    extractFile.colFunctions = colFunc
 
     for file_path in file_paths:
         if not file_path.endswith('.json'):
@@ -60,11 +58,6 @@ if (extractFile.isMongoDB):
     logger.info("Indexing cloneFunctionBlockSize start")
     col.create_index("cloneFunctionBlockSize")
 
-    logger.info("Indexing codeSize start")
-    colFunc.create_index("codeSize")
-
-    logger.info("Indexing blockSize start")
-    colFunc.create_index("blockSize")
     logger.info("Indexing End")
 
     codeSizeTreemapName = f"{colName}CodeSizeTreemap"
@@ -73,17 +66,18 @@ if (extractFile.isMongoDB):
     binsByCodeSize = f"{colName}BinsByCodeSize"
     binsByBlockSize = f"{colName}BinsByBlockSize"
 
-    # codeSizeArr = list(extractFile.codeSizeMap.values())
-    # codeSizeArr.sort()
-    # blockSizeArr = list(extractFile.blockSizeMap.values())
-    # blockSizeArr.sort()
+    codeSizeArr = list(extractFile.codeSizeMap.values())
+    codeSizeArr.sort()
+    blockSizeArr = list(extractFile.blockSizeMap.values())
+    blockSizeArr.sort()
     similarities = [math.floor(extractFile.similarityRange[0] * 100), math.ceil(extractFile.similarityRange[1] * 100)]
     logger.info(f"Similarity range: {similarities}")
 
-    # binSize = max(math.floor(len(codeSizeArr) / limit), 5)
+    binCodeSize = max(math.floor(len(codeSizeArr) / limit), 5)
+    binBlockSize = max(math.floor(len(blockSizeArr) / limit), 5)
 
-    countsCodeSize, codeSizeRelt, binCodeSize, codeSizeArr = ComputeBinsRange.calArr(colFunc, "codeSize")
-    countsBlockSize, blockSizeRelt, binBlockSize, blockSizeArr = ComputeBinsRange.calArr(colFunc, "blockSize")
+    countsCodeSize, codeSizeRelt, binCodeSize, codeSizeArr = ComputeBinsRange.calArr(codeSizeArr, binCodeSize)
+    countsBlockSize, blockSizeRelt, binBlockSize, blockSizeArr = ComputeBinsRange.calArr(blockSizeArr, binBlockSize)
 
     CreateBinsData.createBins(db[binsByCodeSize], codeSizeRelt, countsCodeSize, binCodeSize, codeSizeArr, True)
     CreateBinsData.createBins(db[binsByBlockSize], blockSizeRelt, countsBlockSize, binBlockSize, blockSizeArr, False)
@@ -205,7 +199,7 @@ else:
         if not file_path.endswith('.json'):
             continue
         extractFile.extract(dataDir + file_path)
-
+    conn.commit()
     logger.info("Indexing Start")
     c.execute(f'CREATE INDEX similarity{table} ON {table} (similarity)')
     c.execute(f'CREATE INDEX targetFunctionCodeSize{table} ON {table} (targetFunctionCodeSize)')
@@ -213,20 +207,90 @@ else:
     c.execute(f'CREATE INDEX targetFunctionBlockSize{table} ON {table} (targetFunctionBlockSize)')
     c.execute(f'CREATE INDEX cloneFunctionBlockSize{table} ON {table} (cloneFunctionBlockSize)')
     logger.info("Indexing End")
+    conn.commit()
+    # codeSizeArr = list(extractFile.codeSizeMap.values())
+    # codeSizeArr.sort()
+    # blockSizeArr = list(extractFile.blockSizeMap.values())
+    # blockSizeArr.sort()
+    # similarities = [math.floor(extractFile.similarityRange[0] * 100), math.ceil(extractFile.similarityRange[1] * 100)]
 
-    codeSizeArr = list(extractFile.codeSizeMap.values())
+    c.execute(f'SELECT min(similarity) from {table}')
+    minSim = c.fetchone()[0]
+    c.execute(f'SELECT max(similarity) from {table}')
+    maxSim = c.fetchone()[0]
+    similarities = [math.floor(minSim) * 100, math.ceil(maxSim) * 100]
+    # binSize = max(math.floor(len(codeSizeArr) / limit), 5)
+    logger.info(f'Similarity Range: {similarities}')
+
+    c.execute(f'SELECT min(targetFunctionCodeSize) from {table}')
+    minTargetCodeSize = c.fetchone()[0]
+    c.execute(f'SELECT max(targetFunctionCodeSize) from {table}')
+    maxTargetCodeSize = c.fetchone()[0]
+    c.execute(f'SELECT min(cloneFunctionCodeSize) from {table}')
+    minCloneCodeSize = c.fetchone()[0]
+    c.execute(f'SELECT max(cloneFunctionCodeSize) from {table}')
+    maxCloneCodeSize = c.fetchone()[0]
+    codeSizeRange = [min(minTargetCodeSize, minCloneCodeSize), max(maxTargetCodeSize, maxCloneCodeSize)]
+    logger.info(f'CodeSizeRange: {codeSizeRange}')
+
+    c.execute(f'SELECT min(targetFunctionBlockSize) from {table}')
+    minTargetBlockSize = c.fetchone()[0]
+    c.execute(f'SELECT max(targetFunctionBlockSize) from {table}')
+    maxTargetBlockSize = c.fetchone()[0]
+    c.execute(f'SELECT min(cloneFunctionBlockSize) from {table}')
+    minCloneBlockSize = c.fetchone()[0]
+    c.execute(f'SELECT max(cloneFunctionBlockSize) from {table}')
+    maxCloneBlockSize = c.fetchone()[0]
+    blockSizeRange = [min(minTargetBlockSize, minCloneBlockSize), max(maxTargetBlockSize, maxCloneBlockSize)]
+    logger.info(f'BlockSizeRange: {blockSizeRange}')
+
+    q = f'''CREATE TABLE functions{table} AS
+        SELECT t.targetFunctionId as functionId, t.targetFunctionCodeSize as codeSize, t.targetFunctionBlockSize as blockSize 
+        FROM {table} AS t 
+        WHERE _id IN (SELECT _id FROM {table} ORDER BY RANDOM() LIMIT 100000)
+        union
+        SELECT c.cloneFunctionId as functionId, c.cloneFunctionCodeSize as codeSize, c.cloneFunctionBlockSize as blockSize 
+        FROM {table} AS c 
+        WHERE _id IN (SELECT _id FROM {table} ORDER BY RANDOM() LIMIT 100000)'''
+    c.execute(q)
+    conn.commit()
+    logger.info('Sample function table created')
+    c.execute(f'''SELECT * from functions{table}''')
+    sizeArr = list(c.fetchall())
+    codeSizeArr = [f[1] for f in sizeArr]
     codeSizeArr.sort()
-    blockSizeArr = list(extractFile.blockSizeMap.values())
+
+    blockSizeArr = [f[2] for f in sizeArr]
     blockSizeArr.sort()
-    similarities = [math.floor(extractFile.similarityRange[0] * 100), math.ceil(extractFile.similarityRange[1] * 100)]
 
-    binSize = max(math.floor(len(codeSizeArr) / limit), 5)
+    binCodeSize = max(math.floor(len(codeSizeArr) / limit), 5)
+    binBlockSize = max(math.floor(len(blockSizeArr) / limit), 5)
 
-    countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(codeSizeArr, binSize)
-    countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(blockSizeArr, binSize)
+    countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(codeSizeArr, binCodeSize)
+    codeSizeRelt[0][0] = codeSizeRange[0]
+    codeSizeRelt[-1][-1] = codeSizeRange[1]
+    logger.info(f'CodeSizeRelt:{codeSizeRelt}')
 
-    CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, binSize, codeSizeArr, True, binsByCodeSize)
-    CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, binSize, blockSizeArr, False, binsByBlockSize)
+    countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(blockSizeArr, binBlockSize)
+    blockSizeRelt[0][0] = blockSizeRange[0]
+    blockSizeRelt[-1][-1] = blockSizeRange[1]
+    logger.info(f'BlockSizeRelt: {blockSizeRelt}')
+
+    countsCodeSize = []
+    for sizeRange in codeSizeRelt:
+        c.execute(f'''SELECT COUNT(*) FROM functions{table} WHERE codeSize >= {sizeRange[0]} and 
+            codeSize <= {sizeRange[1]}''')
+        countsCodeSize.append(c.fetchone()[0])
+    logger.info(f'CountsCodeSize: {countsCodeSize}')
+    countsBlockSize = []
+    for sizeRange in blockSizeRelt:
+        c.execute(f'''SELECT COUNT(*) FROM functions{table} WHERE blockSize >= {sizeRange[0]} and 
+            blockSize <= {sizeRange[1]}''')
+        countsBlockSize.append(c.fetchone()[0])
+    logger.info(f'CountsBlockSize: {countsBlockSize}')
+
+    CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, binCodeSize, codeSizeArr, True, binsByCodeSize)
+    CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, binBlockSize, blockSizeArr, False, binsByBlockSize)
 
     CreateTreemapData.setTreemapData(codeSizeRelt, table, True, similarities, codeSizeTreemapName, c)
     CreateTreemapData.setTreemapData(blockSizeRelt, table, False, similarities, blockSizeTreemapName, c)

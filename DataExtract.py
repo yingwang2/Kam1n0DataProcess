@@ -15,7 +15,6 @@ class Extract():
     table = None
     logger = logging.getLogger()
     id = 0
-    colFunctions = None
 
 
     def setCodeSize(self, id, codeSize):
@@ -40,11 +39,11 @@ class Extract():
         self.logger.info('Data Extract Start')
         f = open(file_path)
         try:
-            i = 0
+            # i = 0
             for line in f:
-                if i == 3:
-                    return
-                i = i + 1
+                # if i == 3:
+                #     return
+                # i = i + 1
                 item = json.loads(line)
                 function = item['function']
                 sourceId = function['functionId']
@@ -89,12 +88,6 @@ class Extract():
                                     "cloneFunctionCodeSize": targetCodeSize,
                                     "similarity": similarity
                                     })
-                        self.colFunctions.update({"_id": targetFunctionId},
-                                                 {"codeSize": sourceCodeSize, "blockSize": sourceBlockSize},
-                                                 upsert=True)
-                        self.colFunctions.update({'_id': cloneFunctionId},
-                                                {"codeSize": targetCodeSize, "blockSize": targetBlockSize},
-                                                 upsert=True)
                     else:
                         self.cur.execute('''
                             INSERT INTO %s VALUES 

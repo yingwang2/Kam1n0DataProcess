@@ -202,7 +202,7 @@ def setTreemapDataByBinary(binaries, col, similarities, colRelt, cur=None):
                 cur.execute(f'''
                     INSERT INTO {colRelt} VALUES ('{id}', 'BinaryIds: [{targetBinary["id"]}, {cloneBinary["id"]}]', '{i}', '{j}',
                         '{targetBinary["id"]}', '{cloneBinary["id"]}', '{targetBinary["name"]}', '{cloneBinary["name"]}',
-                         '{similarities[0] / 100,}', '{similarities[1] / 100,}', '', '{1}')
+                         '{similarities[0] / 100}', '{similarities[1] / 100}', '', '{1}')
                     ''')
                 id += 1
     logger.info('Binary Treemap Computing End')

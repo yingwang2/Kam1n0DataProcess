@@ -1,22 +1,23 @@
 import math
 import logging
-import pymongo
 
-def calArr(colFunc, field):
+def calArr(sizeArr, binSize):
     logger = logging.getLogger()
     logger.info("Computing bins start")
-    limit = 550
-    curSizeArr = colFunc.find().sort(field, pymongo.ASCENDING)
-    logger.info("Get sorted data")
-    l = curSizeArr.count()
-    logger.info(f"Number of size data: {l}")
-    lstSizeArr = list(curSizeArr)
-    logger.info("Convert to list")
-    sizeArr = [d[field] for d in lstSizeArr]
-    logger.info("Convert to array")
-    oriBinSize = max(math.floor(l / limit), 5)
-    binSize = max(math.floor(l / limit), 5)
-    logger.info(f"Max bin size {oriBinSize}")
+    # limit = 550
+    # curSizeArr = colFunc.find().sort(field, pymongo.ASCENDING)
+    # logger.info("Get sorted data")
+    # l = curSizeArr.count()
+    # logger.info(f"Number of size data: {l}")
+    # lstSizeArr = list(curSizeArr)
+    # logger.info("Convert to list")
+    # sizeArr = [d[field] for d in lstSizeArr]
+    # logger.info("Convert to array")
+    # oriBinSize = max(math.floor(l / limit), 5)
+    # binSize = max(math.floor(l / limit), 5)
+    # logger.info(f"Max bin size {oriBinSize}")
+    l = len(sizeArr)
+
     arr = []
     start = 0
     step = int(math.ceil(l / binSize))
@@ -52,4 +53,4 @@ def calArr(colFunc, field):
         # print(len(a), a[0], a[-1])
     # print(len(sizeArr), sum([len(a) for a in arr]))
     logger.info("Computing bins end")
-    return counts, relt, oriBinSize, sizeArr
+    return counts, relt
