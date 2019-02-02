@@ -4,8 +4,12 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
     id = 0
     logger = logging.getLogger()
     name = "FunctionCodeSize" if isCodeSize else "FunctionBlockSize"
+    indexName = "codeSize" if isCodeSize else "blockSize"
     logger.info('Code Treemap Computing Start') if isCodeSize else logger.info('Block Treemap Computing Start')
     logger.info('Size Range: %d' % len(sizeRanges))
+    insertLimitIndex = 0
+    insertArr = []
+    hasExecuted = False
     for i, targetSizeRange in enumerate(sizeRanges):
         targetMin = targetSizeRange[0]
         targetMax = targetSizeRange[1]
@@ -77,7 +81,7 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
                 else:
                     sStr = "<=" if sMax == similarities[1] else "<"
                     cur.execute(f'''
-                        SELECT COUNT(*) FROM {col} WHERE 
+                        SELECT COUNT(*) FROM {col} INDEXED BY {indexName}{col} WHERE 
                         target{name} >= {targetMin} and 
                         target{name} <= {targetMax} and 
                         clone{name} >= {cloneMin} and
@@ -86,10 +90,30 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
                         similarity {sStr} {sMax}
                     ''')
                     size = cur.fetchone()[0]
-                    cur.execute(f'''
-                        INSERT INTO {colRelt} VALUES ('{id}', 'Similarity: {sMin*100}% - {sMax*100}%', '{i}', '{j}',
-                        '{targetMin}', '{targetMax}', '{cloneMin}', '{cloneMax}', '{sMin}', '{sMax}', '{size}', '{0}')
-                    ''')
+                    insertArr.append(
+                        (id,
+                         f'Similarity: {sMin*100}% - {sMax*100}%',
+                         i,
+                         j,
+                         targetMin,
+                         targetMax,
+                         cloneMin,
+                         cloneMax,
+                         sMin,
+                         sMax,
+                         size,
+                         0)
+                    )
+                    insertLimitIndex += 1
+                    if insertLimitIndex >= 10000 or len(insertArr) > 0:
+                        cur.executemany(f"insert into {colRelt} values ({'?, '* 11}?)", insertArr)
+                        insertArr = []
+                        hasExecuted = True
+                        insertLimitIndex = 0
+                    # cur.execute(f'''
+                    #     INSERT INTO {colRelt} VALUES ('{id}', 'Similarity: {sMin*100}% - {sMax*100}%', '{i}', '{j}',
+                    #     '{targetMin}', '{targetMax}', '{cloneMin}', '{cloneMax}', '{sMin}', '{sMax}', '{size}', '{0}')
+                    # ''')
                     id += 1
             if not cur:
                 results.append({
@@ -106,17 +130,37 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
                 })
                 colRelt.insert_many(results)
             else:
-                cur.execute(f'''
-                    INSERT INTO {colRelt} VALUES ('{id}', 'Size Range: [{i}, {j}]', '{i}', '{j}',
-                    '{targetMin}', '{targetMax}', '{cloneMin}', '{cloneMax}', '{similarities[0]}', '{similarities[1]}', '', '{1}')
-                ''')
+                insertArr.append(
+                    (id,
+                     f'Size Range: [{i}, {j}]',
+                     i,
+                     j,
+                     targetMin,
+                     targetMax,
+                     cloneMin,
+                     cloneMax,
+                     similarities[0],
+                     similarities[1],
+                     '',
+                     1)
+                )
+                # cur.execute(f'''
+                #     INSERT INTO {colRelt} VALUES ('{id}', 'Size Range: [{i}, {j}]', '{i}', '{j}',
+                #     '{targetMin}', '{targetMax}', '{cloneMin}', '{cloneMax}', '{similarities[0]}', '{similarities[1]}', '', '{1}')
+                # ''')
+                insertLimitIndex += 1
                 id += 1
+    if not hasExecuted or len(insertArr) > 0:
+        cur.executemany(f"insert into {colRelt} values ({'?, '* 11}?)", insertArr)
     logger.info('Code Treemap Computing End') if isCodeSize else logger.info('Block Treemap Computing End')
 
 def setTreemapDataByBinary(binaries, col, similarities, colRelt, cur=None):
     id = 0
     logger = logging.getLogger()
     logger.info('Binary Treemap Computing Start')
+    insertLimitIndex = 0
+    insertArr = []
+    hasExecuted = False
     for i, targetBinary in enumerate(binaries.values()):
         for j, cloneBinary in enumerate(binaries.values()):
             logger.info("Computing index: [%d, %d]" % (i, j))
@@ -171,18 +215,38 @@ def setTreemapDataByBinary(binaries, col, similarities, colRelt, cur=None):
                 else:
                     sStr = "<=" if sMax == similarities[1] else "<"
                     cur.execute(f'''
-                        SELECT COUNT(*) FROM {col} WHERE 
-                        targetBinaryId == {targetBinary["id"]} and 
-                        cloneBinaryId == {cloneBinary["id"]} and 
+                        SELECT COUNT(*) FROM {col} INDEXED BY binary{col} WHERE 
+                        targetBinaryId = {targetBinary["id"]} and 
+                        cloneBinaryId = {cloneBinary["id"]} and 
                         similarity >= {sMin} and 
                         similarity {sStr} {sMax}
                     ''')
                     size = cur.fetchone()[0]
-                    cur.execute(f'''
-                        INSERT INTO {colRelt} VALUES ('{id}', 'Similarity: {sMin*100}% - {sMax*100}%', '{i}', '{j}',
-                        '{targetBinary["id"]}', '{cloneBinary["id"]}', '{targetBinary["name"]}', '{cloneBinary["name"]}', 
-                        '{sMin}', '{sMax}', '{size}', '{0}')
-                                        ''')
+                    insertArr.append(
+                        (id,
+                         f'Similarity: {sMin*100}% - {sMax*100}%',
+                         i,
+                         j,
+                         targetBinary["id"],
+                         cloneBinary["id"],
+                         targetBinary["name"],
+                         cloneBinary["name"],
+                         sMin,
+                         sMax,
+                         size,
+                         0)
+                    )
+                    insertLimitIndex += 1
+                    if insertLimitIndex >= 10000 or len(insertArr) > 0:
+                        cur.executemany(f"insert into {colRelt} values ({'?, '* 11}?)", insertArr)
+                        insertArr = []
+                        hasExecuted = True
+                        insertLimitIndex = 0
+                    # cur.execute(f'''
+                    #     INSERT INTO {colRelt} VALUES ('{id}', 'Similarity: {sMin*100}% - {sMax*100}%', '{i}', '{j}',
+                    #     '{targetBinary["id"]}', '{cloneBinary["id"]}', '{targetBinary["name"]}', '{cloneBinary["name"]}',
+                    #     '{sMin}', '{sMax}', '{size}', '{0}')
+                    #                     ''')
                     id += 1
             if not cur:
                 results.append({
@@ -199,10 +263,27 @@ def setTreemapDataByBinary(binaries, col, similarities, colRelt, cur=None):
                 })
                 colRelt.insert_many(results)
             else:
-                cur.execute(f'''
-                    INSERT INTO {colRelt} VALUES ('{id}', 'BinaryIds: [{targetBinary["id"]}, {cloneBinary["id"]}]', '{i}', '{j}',
-                        '{targetBinary["id"]}', '{cloneBinary["id"]}', '{targetBinary["name"]}', '{cloneBinary["name"]}',
-                         '{similarities[0] / 100}', '{similarities[1] / 100}', '', '{1}')
-                    ''')
+                insertArr.append(
+                    (id,
+                     f'BinaryIds: [{targetBinary["id"]}, {cloneBinary["id"]}]',
+                     i,
+                     j,
+                     targetBinary["id"],
+                     cloneBinary["id"],
+                     targetBinary["name"],
+                     cloneBinary["name"],
+                     similarities[0] / 100,
+                     similarities[1] / 100,
+                     '',
+                     1)
+                )
+                # cur.execute(f'''
+                #     INSERT INTO {colRelt} VALUES ('{id}', 'BinaryIds: [{targetBinary["id"]}, {cloneBinary["id"]}]', '{i}', '{j}',
+                #         '{targetBinary["id"]}', '{cloneBinary["id"]}', '{targetBinary["name"]}', '{cloneBinary["name"]}',
+                #          '{similarities[0] / 100}', '{similarities[1] / 100}', '', '{1}')
+                #     ''')
+                insertLimitIndex += 1
                 id += 1
+    if not hasExecuted or len(insertArr) > 0:
+        cur.executemany(f"insert into {colRelt} values ({'?, '* 11}?)", insertArr)
     logger.info('Binary Treemap Computing End')

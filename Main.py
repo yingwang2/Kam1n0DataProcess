@@ -96,12 +96,12 @@ else:
             print(str)
             exit()
 
-    codeSizeTreemapName = f"{table}CodeSizeTreemap"
+    codeSizeTreemapName = f"{table}codeSizeTreemap"
     blockSizeTreemapName = f"{table}BlockSizeTreemap"
     binaryTreemapName = f"{table}BinaryTreemap"
     binsByCodeSize = f"{table}BinsByCodeSize"
     binsByBlockSize = f"{table}BinsByBlockSize"
-    functionsTableName = f"{table}Functions"
+    functionsTableName = f"Functions{table}"
 
     conn = sqlite3.connect(f'{database}.db')
     c = conn.cursor()
@@ -201,13 +201,20 @@ else:
         if not file_path.endswith('.json'):
             continue
         extractFile.extract(dataDir + file_path)
+
     conn.commit()
     logger.info("Indexing Start")
+    c.execute(f'CREATE INDEX binary{table} ON {table} (targetBinaryId, cloneBinaryId, similarity)')
+    c.execute(f'CREATE INDEX codeSize{table} ON {table} (targetFunctionCodeSize, cloneFunctionCodeSize, similarity)')
+    c.execute(f'CREATE INDEX blockSize{table} ON {table} (targetFunctionBlockSize, cloneFunctionBlockSize, similarity)')
+
     c.execute(f'CREATE INDEX similarity{table} ON {table} (similarity)')
     c.execute(f'CREATE INDEX targetFunctionCodeSize{table} ON {table} (targetFunctionCodeSize)')
     c.execute(f'CREATE INDEX cloneFunctionCodeSize{table} ON {table} (cloneFunctionCodeSize)')
     c.execute(f'CREATE INDEX targetFunctionBlockSize{table} ON {table} (targetFunctionBlockSize)')
     c.execute(f'CREATE INDEX cloneFunctionBlockSize{table} ON {table} (cloneFunctionBlockSize)')
+    c.execute(f'CREATE INDEX targetBinaryId{table} ON {table} (targetBinaryId)')
+    c.execute(f'CREATE INDEX cloneBinaryId{table} ON {table} (cloneBinaryId)')
     logger.info("Indexing End")
     conn.commit()
     # codeSizeArr = list(extractFile.codeSizeMap.values())
@@ -224,24 +231,24 @@ else:
     # binSize = max(math.floor(len(codeSizeArr) / limit), 5)
     logger.info(f'Similarity Range: {similarities}')
 
-    c.execute(f'SELECT min(targetFunctionCodeSize) from {table}')
+    c.execute(f'SELECT min(targetFunctionCodeSize) from {table} INDEXED BY targetFunctionCodeSize{table}')
     minTargetCodeSize = c.fetchone()[0]
-    c.execute(f'SELECT max(targetFunctionCodeSize) from {table}')
+    c.execute(f'SELECT max(targetFunctionCodeSize) from {table} INDEXED BY targetFunctionCodeSize{table}')
     maxTargetCodeSize = c.fetchone()[0]
-    c.execute(f'SELECT min(cloneFunctionCodeSize) from {table}')
+    c.execute(f'SELECT min(cloneFunctionCodeSize) from {table} INDEXED BY cloneFunctionCodeSize{table}')
     minCloneCodeSize = c.fetchone()[0]
-    c.execute(f'SELECT max(cloneFunctionCodeSize) from {table}')
+    c.execute(f'SELECT max(cloneFunctionCodeSize) from {table} INDEXED BY cloneFunctionCodeSize{table}')
     maxCloneCodeSize = c.fetchone()[0]
     codeSizeRange = [min(minTargetCodeSize, minCloneCodeSize), max(maxTargetCodeSize, maxCloneCodeSize)]
     logger.info(f'CodeSizeRange: {codeSizeRange}')
 
-    c.execute(f'SELECT min(targetFunctionBlockSize) from {table}')
+    c.execute(f'SELECT min(targetFunctionBlockSize) from {table} INDEXED BY targetFunctionBlockSize{table}')
     minTargetBlockSize = c.fetchone()[0]
-    c.execute(f'SELECT max(targetFunctionBlockSize) from {table}')
+    c.execute(f'SELECT max(targetFunctionBlockSize) from {table} INDEXED BY targetFunctionBlockSize{table}')
     maxTargetBlockSize = c.fetchone()[0]
-    c.execute(f'SELECT min(cloneFunctionBlockSize) from {table}')
+    c.execute(f'SELECT min(cloneFunctionBlockSize) from {table} INDEXED BY cloneFunctionBlockSize{table}')
     minCloneBlockSize = c.fetchone()[0]
-    c.execute(f'SELECT max(cloneFunctionBlockSize) from {table}')
+    c.execute(f'SELECT max(cloneFunctionBlockSize) from {table} INDEXED BY cloneFunctionBlockSize{table}')
     maxCloneBlockSize = c.fetchone()[0]
     blockSizeRange = [min(minTargetBlockSize, minCloneBlockSize), max(maxTargetBlockSize, maxCloneBlockSize)]
     logger.info(f'BlockSizeRange: {blockSizeRange}')
@@ -257,12 +264,12 @@ else:
     c.execute(q)
     conn.commit()
     logger.info('Sample function table created')
-    c.execute(f'''SELECT * from {functionsTableName}''')
+    c.execute(f'''SELECT codeSize, blockSize from {functionsTableName}''')
     sizeArr = list(c.fetchall())
-    codeSizeArr = [f[1] for f in sizeArr]
+    codeSizeArr = [f[0] for f in sizeArr]
     codeSizeArr.sort()
 
-    blockSizeArr = [f[2] for f in sizeArr]
+    blockSizeArr = [f[1] for f in sizeArr]
     blockSizeArr.sort()
 
     binCodeSize = max(math.floor(len(codeSizeArr) / limit), 5)
@@ -291,12 +298,17 @@ else:
         countsBlockSize.append(c.fetchone()[0])
     logger.info(f'CountsBlockSize: {countsBlockSize}')
 
-    CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, binCodeSize, codeSizeArr, True, binsByCodeSize, functionsTableName)
-    CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, binBlockSize, blockSizeArr, False, binsByBlockSize, functionsTableName)
+    CreateTreemapData.setTreemapDataByBinary(extractFile.binaries, table, similarities, binaryTreemapName, c)
+    conn.commit()
+
+    CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, True, binsByCodeSize, functionsTableName)
+    conn.commit()
+    CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, False, binsByBlockSize, functionsTableName)
+    conn.commit()
 
     CreateTreemapData.setTreemapData(codeSizeRelt, table, True, similarities, codeSizeTreemapName, c)
+    conn.commit()
     CreateTreemapData.setTreemapData(blockSizeRelt, table, False, similarities, blockSizeTreemapName, c)
-    CreateTreemapData.setTreemapDataByBinary(extractFile.binaries, table, similarities, binaryTreemapName, c)
 
     conn.commit()
     conn.close()

@@ -5,15 +5,16 @@ import sqlite3
 import ComputeBinsRange
 import CreateTreemapData
 
-def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize, binsTable, tableFunctions):
+def createBins(dbBinsBySize, sizeRelt, countsSize, isCodeSize, binsTable, tableFunctions):
     def getBinCount(c, binsRange, isCodeSize, tableFunctions):
         field = 'codeSize' if isCodeSize else 'blockSize'
         c.execute(f'''SELECT COUNT(*) FROM {tableFunctions} WHERE {field} >= {binsRange[0]} and 
             {field} <= {binsRange[1]}''')
         return c.fetchone()[0]
+    binSize = len(countsSize)
     id = 0
-    # logger = logging.getLogger()
-    # logger.info('Bin Chart for Code Size Computing Start') if isCodeSize else logger.info('Bin Chart for Block Size Computing Start')
+    logger = logging.getLogger()
+    logger.info('Bin Chart for Code Size Computing Start') if isCodeSize else logger.info('Bin Chart for Block Size Computing Start')
     initialBins = []
     # minSize = sizeRelt[0][0]
     # maxSize = sizeRelt[-1][-1]
@@ -77,7 +78,7 @@ def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize,
         bins = copy.deepcopy(newBins)
 
         i += 1
-        print("len new bins: ",len(newBins))
+
     for i, stage in enumerate(relt):
         for j, bins in enumerate(stage):
             if not binsTable:
@@ -94,93 +95,5 @@ def createBins(dbBinsBySize, sizeRelt, countsSize, binSize, sizeArr, isCodeSize,
                 id += 1
 
     # dbBinsBySize.insert({"0": relt})
-    # logger.info('Bin Chart for Code Size Computing End') if isCodeSize else logger.info(
-    #         'Bin Chart for Block Size Computing End')
-    print(relt)
-
-
-conn = sqlite3.connect('Kam1n0.db')
-c = conn.cursor()
-table='result0131'
-
-codeSizeTreemapName = f"{table}CodeSizeTreemap"
-blockSizeTreemapName = f"{table}BlockSizeTreemap"
-binaryTreemapName = f"{table}BinaryTreemap"
-binsByCodeSize = f"{table}BinsByCodeSize"
-binsByBlockSize = f"{table}BinsByBlockSize"
-
-c.execute(f'''CREATE TABLE if not exists {binsByCodeSize}
-             (_id TEXT UNIQUE,
-             min NUMERIC,
-             max NUMERIC,
-             count NUMERIC,
-             stage NUMERIC,
-             binIdx NUMERIC
-              )''')
-
-c.execute(f'''CREATE TABLE if not exists {binsByBlockSize}
-             (_id TEXT UNIQUE,
-             min NUMERIC,
-             max NUMERIC,
-             count NUMERIC,
-             stage NUMERIC,
-             binIdx NUMERIC
-              )''')
-conn.commit()
-
-c.execute(f'SELECT min(similarity) from {table}')
-minSim = c.fetchone()[0]
-c.execute(f'SELECT max(similarity) from {table}')
-maxSim = c.fetchone()[0]
-similarities = [math.floor(minSim) * 100, math.ceil(maxSim) * 100]
-
-c.execute(f'SELECT min(targetFunctionBlockSize) from {table}')
-minTargetBlockSize = c.fetchone()[0]
-c.execute(f'SELECT max(targetFunctionBlockSize) from {table}')
-maxTargetBlockSize = c.fetchone()[0]
-c.execute(f'SELECT min(cloneFunctionBlockSize) from {table}')
-minCloneBlockSize = c.fetchone()[0]
-c.execute(f'SELECT max(cloneFunctionBlockSize) from {table}')
-maxCloneBlockSize = c.fetchone()[0]
-blockSizeRange = [min(minTargetBlockSize, minCloneBlockSize), max(maxTargetBlockSize, maxCloneBlockSize)]
-
-c.execute(f'SELECT min(targetFunctionCodeSize) from {table}')
-minTargetCodeSize = c.fetchone()[0]
-c.execute(f'SELECT max(targetFunctionCodeSize) from {table}')
-maxTargetCodeSize = c.fetchone()[0]
-c.execute(f'SELECT min(cloneFunctionCodeSize) from {table}')
-minCloneCodeSize = c.fetchone()[0]
-c.execute(f'SELECT max(cloneFunctionCodeSize) from {table}')
-maxCloneCodeSize = c.fetchone()[0]
-codeSizeRange = [min(minTargetCodeSize, minCloneCodeSize), max(maxTargetCodeSize, maxCloneCodeSize)]
-
-c.execute(f'''SELECT * from functions{table}''')
-sizeArr = list(c.fetchall())
-
-codeSizeArr = [f[1] for f in sizeArr]
-codeSizeArr.sort()
-
-blockSizeArr = [f[2] for f in sizeArr]
-blockSizeArr.sort()
-
-limit = 550
-
-binCodeSize = max(math.floor(len(codeSizeArr) / limit), 5)
-countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(codeSizeArr, binCodeSize)
-codeSizeRelt[0][0] = codeSizeRange[0]
-codeSizeRelt[-1][-1] = codeSizeRange[1]
-createBins(c, codeSizeRelt, countsCodeSize, len(countsCodeSize), codeSizeArr, True, binsByCodeSize, f'functions{table}')
-
-binBlockSize = max(math.floor(len(blockSizeArr) / limit), 5)
-countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(blockSizeArr, binBlockSize)
-blockSizeRelt[0][0] = blockSizeRange[0]
-blockSizeRelt[-1][-1] = blockSizeRange[1]
-createBins(c, blockSizeRelt, countsBlockSize, len(countsBlockSize), blockSizeArr, False, binsByBlockSize, f'functions{table}')
-
-CreateTreemapData.setTreemapData(codeSizeRelt, table, True, similarities, codeSizeTreemapName, c)
-CreateTreemapData.setTreemapData(blockSizeRelt, table, False, similarities, blockSizeTreemapName, c)
-# CreateTreemapData.setTreemapDataByBinary(extractFile.binaries, table, similarities, binaryTreemapName, c)
-
-
-conn.commit()
-conn.close()
+    logger.info('Bin Chart for Code Size Computing End') if isCodeSize else logger.info(
+            'Bin Chart for Block Size Computing End')

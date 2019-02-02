@@ -39,11 +39,10 @@ class Extract():
         self.logger.info('Data Extract Start')
         f = open(file_path)
         try:
-            # i = 0
+            insertLimitIndex = 0
+            insertArr = []
+            hasExecuted = False
             for line in f:
-                # if i == 3:
-                #     return
-                # i = i + 1
                 item = json.loads(line)
                 function = item['function']
                 sourceId = function['functionId']
@@ -89,27 +88,50 @@ class Extract():
                                     "similarity": similarity
                                     })
                     else:
-                        self.cur.execute('''
-                            INSERT INTO %s VALUES 
-                            ('%s', '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')
-                        ''' % (self.table,
-                               self.id,
-                               ("%s%s" % (sourceBinaryId, sourceId)),
-                               "%s%s" % (targetBinaryId, targetId),
-                               sourceBinaryId,
-                               targetBinaryId,
-                               sourceBlockSize,
-                               sourceCodeSize,
-                               sourceName,
-                               targetName,
-                               sourceBinaryName,
-                               targetBinaryName,
-                               targetBlockSize,
-                               targetCodeSize,
-                               similarity
-                               ))
+                        insertArr.append(
+                            (self.id,
+                            "%s%s" % (sourceBinaryId, sourceId),
+                            "%s%s" % (targetBinaryId, targetId),
+                            sourceBinaryId,
+                            targetBinaryId,
+                            sourceBlockSize,
+                            sourceCodeSize,
+                            sourceName,
+                            targetName,
+                            sourceBinaryName,
+                            targetBinaryName,
+                            targetBlockSize,
+                            targetCodeSize,
+                            similarity)
+                        )
+                        # self.cur.execute('''
+                        #     INSERT INTO %s VALUES
+                        #     ('%s', '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')
+                        # ''' % (self.table,
+                        #        self.id,
+                        #        ("%s%s" % (sourceBinaryId, sourceId)),
+                        #        "%s%s" % (targetBinaryId, targetId),
+                        #        sourceBinaryId,
+                        #        targetBinaryId,
+                        #        sourceBlockSize,
+                        #        sourceCodeSize,
+                        #        sourceName,
+                        #        targetName,
+                        #        sourceBinaryName,
+                        #        targetBinaryName,
+                        #        targetBlockSize,
+                        #        targetCodeSize,
+                        #        similarity
+                        #        ))
+                        insertLimitIndex += 1
+                        if insertLimitIndex >= 10000:
+                            self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
+                            insertArr = []
+                            hasExecuted = True
+                            insertLimitIndex = 0
                         self.id += 1
-
+            if not hasExecuted or len(insertArr) > 0:
+                self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
         except Exception:
             self.logger.error('Data Extract Error: ' + traceback.format_exc())
             exit()
