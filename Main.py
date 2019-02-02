@@ -101,6 +101,7 @@ else:
     binaryTreemapName = f"{table}BinaryTreemap"
     binsByCodeSize = f"{table}BinsByCodeSize"
     binsByBlockSize = f"{table}BinsByBlockSize"
+    functionsTableName = f"{table}Functions"
 
     conn = sqlite3.connect(f'{database}.db')
     c = conn.cursor()
@@ -113,6 +114,7 @@ else:
     ifTableExist(codeSizeTreemapName, c)
     ifTableExist(binaryTreemapName, c)
     ifTableExist(blockSizeTreemapName, c)
+    ifTableExist(functionsTableName, c)
 
     c.execute(f'''CREATE TABLE if not exists {table}
                  (_id TEXT UNIQUE,
@@ -244,7 +246,7 @@ else:
     blockSizeRange = [min(minTargetBlockSize, minCloneBlockSize), max(maxTargetBlockSize, maxCloneBlockSize)]
     logger.info(f'BlockSizeRange: {blockSizeRange}')
 
-    q = f'''CREATE TABLE functions{table} AS
+    q = f'''CREATE TABLE {functionsTableName} AS
         SELECT t.targetFunctionId as functionId, t.targetFunctionCodeSize as codeSize, t.targetFunctionBlockSize as blockSize 
         FROM {table} AS t 
         WHERE _id IN (SELECT _id FROM {table} ORDER BY RANDOM() LIMIT 100000)
@@ -255,7 +257,7 @@ else:
     c.execute(q)
     conn.commit()
     logger.info('Sample function table created')
-    c.execute(f'''SELECT * from functions{table}''')
+    c.execute(f'''SELECT * from {functionsTableName}''')
     sizeArr = list(c.fetchall())
     codeSizeArr = [f[1] for f in sizeArr]
     codeSizeArr.sort()
@@ -278,19 +280,19 @@ else:
 
     countsCodeSize = []
     for sizeRange in codeSizeRelt:
-        c.execute(f'''SELECT COUNT(*) FROM functions{table} WHERE codeSize >= {sizeRange[0]} and 
+        c.execute(f'''SELECT COUNT(*) FROM {functionsTableName} WHERE codeSize >= {sizeRange[0]} and 
             codeSize <= {sizeRange[1]}''')
         countsCodeSize.append(c.fetchone()[0])
     logger.info(f'CountsCodeSize: {countsCodeSize}')
     countsBlockSize = []
     for sizeRange in blockSizeRelt:
-        c.execute(f'''SELECT COUNT(*) FROM functions{table} WHERE blockSize >= {sizeRange[0]} and 
+        c.execute(f'''SELECT COUNT(*) FROM {functionsTableName} WHERE blockSize >= {sizeRange[0]} and 
             blockSize <= {sizeRange[1]}''')
         countsBlockSize.append(c.fetchone()[0])
     logger.info(f'CountsBlockSize: {countsBlockSize}')
 
-    CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, binCodeSize, codeSizeArr, True, binsByCodeSize)
-    CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, binBlockSize, blockSizeArr, False, binsByBlockSize)
+    CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, binCodeSize, codeSizeArr, True, binsByCodeSize, functionsTableName)
+    CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, binBlockSize, blockSizeArr, False, binsByBlockSize, functionsTableName)
 
     CreateTreemapData.setTreemapData(codeSizeRelt, table, True, similarities, codeSizeTreemapName, c)
     CreateTreemapData.setTreemapData(blockSizeRelt, table, False, similarities, blockSizeTreemapName, c)
