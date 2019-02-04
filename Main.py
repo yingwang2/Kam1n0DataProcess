@@ -217,18 +217,12 @@ else:
     c.execute(f'CREATE INDEX cloneBinaryId{table} ON {table} (cloneBinaryId)')
     logger.info("Indexing End")
     conn.commit()
-    # codeSizeArr = list(extractFile.codeSizeMap.values())
-    # codeSizeArr.sort()
-    # blockSizeArr = list(extractFile.blockSizeMap.values())
-    # blockSizeArr.sort()
-    # similarities = [math.floor(extractFile.similarityRange[0] * 100), math.ceil(extractFile.similarityRange[1] * 100)]
 
     c.execute(f'SELECT min(similarity) from {table}')
     minSim = c.fetchone()[0]
     c.execute(f'SELECT max(similarity) from {table}')
     maxSim = c.fetchone()[0]
     similarities = [math.floor(minSim) * 100, math.ceil(maxSim) * 100]
-    # binSize = max(math.floor(len(codeSizeArr) / limit), 5)
     logger.info(f'Similarity Range: {similarities}')
 
     c.execute(f'SELECT min(targetFunctionCodeSize) from {table} INDEXED BY targetFunctionCodeSize{table}')
@@ -272,15 +266,15 @@ else:
     blockSizeArr = [f[1] for f in sizeArr]
     blockSizeArr.sort()
 
-    binCodeSize = max(math.floor(len(codeSizeArr) / limit), 5)
-    binBlockSize = max(math.floor(len(blockSizeArr) / limit), 5)
+    binCodeSize = min(max(math.floor(len(codeSizeArr) / limit), 5), 10)
+    binBlockSize = min(max(math.floor(len(blockSizeArr) / limit), 5), 10)
 
-    countsCodeSize, codeSizeRelt = ComputeBinsRange.calArr(codeSizeArr, binCodeSize)
+    codeSizeRelt = ComputeBinsRange.calArr(codeSizeArr, binCodeSize)
     codeSizeRelt[0][0] = codeSizeRange[0]
     codeSizeRelt[-1][-1] = codeSizeRange[1]
     logger.info(f'CodeSizeRelt:{codeSizeRelt}')
 
-    countsBlockSize, blockSizeRelt = ComputeBinsRange.calArr(blockSizeArr, binBlockSize)
+    blockSizeRelt = ComputeBinsRange.calArr(blockSizeArr, binBlockSize)
     blockSizeRelt[0][0] = blockSizeRange[0]
     blockSizeRelt[-1][-1] = blockSizeRange[1]
     logger.info(f'BlockSizeRelt: {blockSizeRelt}')
@@ -300,7 +294,6 @@ else:
 
     CreateTreemapData.setTreemapDataByBinary(extractFile.binaries, table, similarities, binaryTreemapName, c)
     conn.commit()
-
     CreateBinsData.createBins(c, codeSizeRelt, countsCodeSize, True, binsByCodeSize, functionsTableName)
     conn.commit()
     CreateBinsData.createBins(c, blockSizeRelt, countsBlockSize, False, binsByBlockSize, functionsTableName)

@@ -10,6 +10,7 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
     insertLimitIndex = 0
     insertArr = []
     hasExecuted = False
+    simStep = 5
     for i, targetSizeRange in enumerate(sizeRanges):
         targetMin = targetSizeRange[0]
         targetMax = targetSizeRange[1]
@@ -19,12 +20,13 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
             cloneMax = cloneSizeRange[1]
             results = []
 
-            for s in range(similarities[0], similarities[1]):
+            for s in range(similarities[0], similarities[1] + simStep, simStep):
+                logger.info(f'At step {i, j, s}')
                 if s >= similarities[1]:
                     break
 
                 sMin = s / 100
-                sMax = (s + 1) / 100
+                sMax = (s + simStep) / 100
 
 
                 if not cur:
@@ -80,12 +82,16 @@ def setTreemapData(sizeRanges, col, isCodeSize, similarities, colRelt, cur=None)
                     })
                 else:
                     sStr = "<=" if sMax == similarities[1] else "<"
+                    sTarget = f'target{name} >= {targetMin} and target{name} <= {targetMax} and '
+                    if targetMin == targetMax:
+                        sTarget = f'target{name} = {targetMin} and'
+                    sClone = f'clone{name} >= {cloneMin} and clone{name} <= {cloneMax} and'
+                    if cloneMin == cloneMax:
+                        sClone = f'clone{name} = {cloneMin} and'
                     cur.execute(f'''
                         SELECT COUNT(*) FROM {col} INDEXED BY {indexName}{col} WHERE 
-                        target{name} >= {targetMin} and 
-                        target{name} <= {targetMax} and 
-                        clone{name} >= {cloneMin} and
-                        clone{name} <= {cloneMax} and
+                        {sTarget}
+                        {sClone}
                         similarity >= {sMin} and 
                         similarity {sStr} {sMax}
                     ''')

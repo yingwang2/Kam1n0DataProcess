@@ -126,12 +126,15 @@ class Extract():
                         insertLimitIndex += 1
                         if insertLimitIndex >= 10000:
                             self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
+                            self.logger.info(f'Inserted {insertLimitIndex} rows')
                             insertArr = []
                             hasExecuted = True
                             insertLimitIndex = 0
                         self.id += 1
             if not hasExecuted or len(insertArr) > 0:
                 self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
+                self.logger.info(f'Inserted {insertLimitIndex} left rows')
+            self.logger.info(f'Totol rows: {self.id}')
         except Exception:
             self.logger.error('Data Extract Error: ' + traceback.format_exc())
             exit()
