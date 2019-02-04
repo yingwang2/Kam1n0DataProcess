@@ -45,16 +45,16 @@ def calArr(sizeArr, binSize):
     logger.info("Start to push results")
     # x = []
     # y = []
-    counts = []
+    # counts = []
     relt = []
     eachSizeArrStart = arr[0][0]
 
     for a in arr:
-        counts.append((len(a)))
+        # counts.append((len(a)))
         relt.append([min(a[0], eachSizeArrStart), a[-1]])
         eachSizeArrStart = a[-1] + 1
         # print(len(a), a[0], a[-1])
     # print(len(sizeArr), sum([len(a) for a in arr]))
     logger.info("Computing bins end")
-    return counts, relt
+    return relt
 
