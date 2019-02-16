@@ -104,25 +104,6 @@ class Extract():
                             targetCodeSize,
                             similarity)
                         )
-                        # self.cur.execute('''
-                        #     INSERT INTO %s VALUES
-                        #     ('%s', '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')
-                        # ''' % (self.table,
-                        #        self.id,
-                        #        ("%s%s" % (sourceBinaryId, sourceId)),
-                        #        "%s%s" % (targetBinaryId, targetId),
-                        #        sourceBinaryId,
-                        #        targetBinaryId,
-                        #        sourceBlockSize,
-                        #        sourceCodeSize,
-                        #        sourceName,
-                        #        targetName,
-                        #        sourceBinaryName,
-                        #        targetBinaryName,
-                        #        targetBlockSize,
-                        #        targetCodeSize,
-                        #        similarity
-                        #        ))
                         insertLimitIndex += 1
                         if insertLimitIndex >= 10000:
                             self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
