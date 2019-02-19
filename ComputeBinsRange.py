@@ -36,10 +36,11 @@ def calArr(sizeArr, binSize):
     relt = []
     eachSizeArrStart = arr[0][0]
 
+    i = 0
     for a in arr:
-        relt.append([min(a[0], eachSizeArrStart), a[-1]])
+        relt.append((i, min(a[0], eachSizeArrStart), a[-1]))
         eachSizeArrStart = a[-1] + 1
-
+        i += 1
     logger.info("Computing bins end")
     return relt
 

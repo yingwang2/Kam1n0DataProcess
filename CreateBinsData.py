@@ -5,26 +5,27 @@ import sqlite3
 import ComputeBinsRange
 import CreateTreemapData
 
-def createBins(dbBinsBySize, sizeRelt, countsSize, isCodeSize, binsTable, tableFunctions):
-    def getBinCount(c, binsRange, isCodeSize, tableFunctions):
-        field = 'codeSize' if isCodeSize else 'blockSize'
-        c.execute(f'''SELECT COUNT(*) FROM {tableFunctions} WHERE {field} >= {binsRange[0]} and 
-            {field} <= {binsRange[1]}''')
-        return c.fetchone()[0]
+def createBins(dbBinsBySize, sizeRelt, isCodeSize, binsTable, initialBins):
+    # def getBinCount(c, binsRange, isCodeSize, tableFunctions):
+    #     field = 'codeSize' if isCodeSize else 'blockSize'
+    #     c.execute(f'''SELECT COUNT(*) FROM {tableFunctions} WHERE {field} >= {binsRange[0]} and
+    #         {field} <= {binsRange[1]}''')
+    #     return c.fetchone()[0]
+    countsSize = [i['count'] for i in initialBins]
     binSize = len(countsSize)
     id = 0
     logger = logging.getLogger()
     logger.info('Bin Chart for Code Size Computing Start') if isCodeSize else logger.info('Bin Chart for Block Size Computing Start')
-    initialBins = []
+    # initialBins = []
     relt = []
-
-    for binRange in sizeRelt:
-        count = getBinCount(dbBinsBySize, binRange, isCodeSize, tableFunctions)
-        initialBins.append({
-            "min": binRange[0],
-            "max": binRange[1],
-            "count": count
-        })
+    #
+    # for binRange in sizeRelt:
+    #     count = getBinCount(dbBinsBySize, binRange, isCodeSize, tableFunctions)
+    #     initialBins.append({
+    #         "min": binRange[0],
+    #         "max": binRange[1],
+    #         "count": count
+    #     })
     relt.append(initialBins)
     bins = initialBins
 
