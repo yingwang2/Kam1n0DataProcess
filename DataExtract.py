@@ -1,38 +1,17 @@
 import json
 import traceback
-import math
-import logging
-
-class Extract():
-    isMongoDB = True
-    binaryIndexMap = {}
-    binaries = dict()
-    codeSizeMap = {}
-    blockSizeMap = {}
-    similarityRange = [math.inf, -math.inf]
-    col = None
-    cur = None
-    table = None
-    logger = logging.getLogger()
-    id = 0
+import re
 
 
-    def setCodeSize(self, id, codeSize):
-        if not id in self.codeSizeMap:
-            self.codeSizeMap[id] = codeSize
-
-    def setBlockSize(self, id, blockSize):
-        if not id in self.blockSizeMap:
-            self.blockSizeMap[id] = blockSize
-
-    def setSimilarityRange(self, similarity):
-        self.similarityRange[0] = min(self.similarityRange[0], similarity)
-        self.similarityRange[1] = max(self.similarityRange[1], similarity)
-
-    def addBinary(self, binaryId, binaryName):
-        if (binaryId not in self.binaries.keys()):
-            self.binaries[binaryId] = ({"name": binaryName, "id": binaryId})
-
+class Extract:
+    def __init__(self, cur, table, logger, pattern, addVersion):
+        self.cur = cur
+        self.table = table
+        self.logger = logger
+        self.id = 0
+        self.binaries = set()
+        self.pattern = pattern
+        self.addVersion = addVersion
 
     def extract(self, file_path):
         self.logger.info('File Path: ' + file_path)
@@ -52,10 +31,13 @@ class Extract():
                 sourceBlockSize = function['blockSize']if 'blockSize' in function else 0
                 sourceCodeSize = function['codeSize'] if 'codeSize' in function else 0
                 targetFunctionId = "%s%s" % (sourceBinaryId, sourceId)
+                sourceVersion = ''
+                targetVersion = ''
 
-                self.addBinary(sourceBinaryId, sourceBinaryName)
-                self.setCodeSize(targetFunctionId, sourceCodeSize)
-                self.setBlockSize(targetFunctionId, sourceBlockSize)
+                if self.addVersion:
+                    m = re.search(self.pattern, sourceBinaryName)
+                    if m:
+                        sourceVersion = m.group(1)
 
                 for clone in item['clones']:
                     targetId = clone['functionId']
@@ -67,58 +49,60 @@ class Extract():
                     targetCodeSize = clone['codeSize'] if 'codeSize' in clone else 0
                     cloneFunctionId = "%s%s" % (targetBinaryId, targetId)
 
-                    self.addBinary(targetBinaryId, targetBinaryName)
-                    self.setCodeSize(cloneFunctionId, targetCodeSize)
-                    self.setBlockSize(cloneFunctionId, targetBlockSize)
-                    self.setSimilarityRange(similarity)
+                    row = (self.id,
+                        targetFunctionId,
+                        cloneFunctionId,
+                        sourceBinaryId,
+                        targetBinaryId,
+                        sourceBlockSize,
+                        sourceCodeSize,
+                        sourceName,
+                        targetName,
+                        sourceBinaryName,
+                        targetBinaryName,
+                        targetBlockSize,
+                        targetCodeSize,
+                        similarity)
 
-                    if self.isMongoDB:
-                        self.col.insert({"targetFunctionId": targetFunctionId,
-                                    "cloneFunctionId": cloneFunctionId,
-                                    "targetBinaryId": sourceBinaryId,
-                                    "cloneBinaryId": targetBinaryId,
-                                    "targetFunctionBlockSize": sourceBlockSize,
-                                    "targetFunctionCodeSize": sourceCodeSize,
-                                    "targetFunctionName": sourceName,
-                                    "cloneFunctionName": targetName,
-                                    "targetBinaryName": sourceBinaryName,
-                                    "cloneBinaryName": targetBinaryName,
-                                    "cloneFunctionBlockSize": targetBlockSize,
-                                    "cloneFunctionCodeSize": targetCodeSize,
-                                    "similarity": similarity
-                                    })
-                    else:
-                        insertArr.append(
-                            (self.id,
-                            "%s%s" % (sourceBinaryId, sourceId),
-                            "%s%s" % (targetBinaryId, targetId),
-                            sourceBinaryId,
-                            targetBinaryId,
-                            sourceBlockSize,
-                            sourceCodeSize,
-                            sourceName,
-                            targetName,
-                            sourceBinaryName,
-                            targetBinaryName,
-                            targetBlockSize,
-                            targetCodeSize,
-                            similarity)
-                        )
-                        insertLimitIndex += 1
-                        if insertLimitIndex >= 10000:
-                            self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
-                            self.logger.info(f'Inserted {insertLimitIndex} rows')
-                            insertArr = []
-                            hasExecuted = True
-                            insertLimitIndex = 0
-                        self.id += 1
+                    numCol = 13
+                    if self.addVersion:
+                        m = re.search(self.pattern, targetBinaryName)
+                        if m:
+                            targetVersion = m.group(1)
+                        row = row + (sourceVersion, targetVersion, )
+                        numCol = 15
+
+                    insertArr.append(row)
+                    insertLimitIndex += 1
+                    if insertLimitIndex >= 10000:
+                        self.cur.executemany(f"insert into {self.table} values ({'?, ' * numCol}?)", insertArr)
+                        self.logger.info(f'Inserted {insertLimitIndex} rows')
+                        insertArr = []
+                        hasExecuted = True
+                        insertLimitIndex = 0
+                    self.id += 1
             if not hasExecuted or len(insertArr) > 0:
-                self.cur.executemany(f"insert into {self.table} values ({'?, '* 13}?)", insertArr)
+                self.cur.executemany(f"insert into {self.table} values ({'?, '* numCol}?)", insertArr)
                 self.logger.info(f'Inserted {insertLimitIndex} left rows')
             self.logger.info(f'Totol rows: {self.id}')
         except Exception:
             self.logger.error('Data Extract Error: ' + traceback.format_exc())
+            print('Data Extract Error: ' + traceback.format_exc())
             exit()
         finally:
             f.close()
         self.logger.info('Data Extract End')
+
+    def check_binary_name(self, file_path):
+        regex = re.compile('"binaryName":' + '"(' + self.pattern + ')"')
+        f = open(file_path)
+        try:
+            for line in f:
+                for match in regex.finditer(line):
+                    self.binaries.add(f'binary: {match.group(1)}, version: {match.group(2)}')
+        except Exception:
+            self.logger.error('Data Extract Error: ' + traceback.format_exc())
+            print('Data Extract Error: ' + traceback.format_exc())
+            exit()
+        finally:
+            f.close()
