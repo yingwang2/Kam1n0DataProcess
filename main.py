@@ -67,7 +67,8 @@ def createTables(table, functionsTableName, addVersion):
                   cloneBinaryName TEXT,
                   cloneFunctionBlockSize INTEGER,
                   cloneFunctionCodeSize INTEGER,
-                  similarity NUMERIC
+                  similarity NUMERIC,
+                  targetFunctionCallee TEXT
                   '''
 
     if addVersion:
@@ -94,7 +95,7 @@ file_paths = os.listdir(dataDir)
 database = config.get('setting', 'database')
 table = config.get('setting', 'table')
 
-shouldCheck = config.get('binaryInfo', 'checkBinary') == 'True'
+shouldCheck = config.get('binaryInfo', 'checkBinaryVersion') == 'True'
 pattern = config.get('binaryInfo', 'binaryPattern')
 addVersion = config.get('binaryInfo', 'addVersion') == 'True'
 
@@ -110,7 +111,7 @@ if shouldCheck:
         extractFile.check_binary_name(dataDir + file_path)
     binaries = extractFile.binaries
     if len(binaries) > 0:
-        print('Please check if the following binaries and versions are expected')
+        print('Please check if the following binaries and versions are expected. If so, you can change the "checkBinaryVersion" as False in config.ini')
         for b in binaries:
             print(b)
     else:
@@ -138,7 +139,8 @@ blockProcessData.createBinsData()
 blockProcessData.createTreemap()
 
 processData.createBinaryTreemap(conn, cur, table, logger)
-processData.createVersionTreemap(conn, cur, table, logger)
+if addVersion:
+    processData.createVersionTreemap(conn, cur, table, logger)
 
 conn.commit()
 cur.close()

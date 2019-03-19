@@ -17,11 +17,23 @@ class Extract:
         self.logger.info('File Path: ' + file_path)
         self.logger.info('Data Extract Start')
         f = open(file_path)
+        numCol = 14
+        if self.addVersion:
+            numCol += 2
         try:
             insertLimitIndex = 0
             insertArr = []
             hasExecuted = False
-            for line in f:
+            lineHasRead = None
+            while True:
+                if lineHasRead:
+                    print('contains line that has been read: ', lineHasRead)
+                    line = lineHasRead
+                else:
+                    line = f.readline()
+                if not line:
+                    break
+
                 item = json.loads(line)
                 function = item['function']
                 sourceId = function['functionId']
@@ -34,6 +46,13 @@ class Extract:
                 sourceVersion = ''
                 targetVersion = ''
 
+                line2 = f.readline()  # read line of function calls
+                item2 = json.loads(line2)
+                if line2 and sourceId == str(item2['functionId']):
+                    callee = str(item2['callingFunctionIds'])
+                else:
+                    callee = ''
+                    lineHasRead = line2
                 if self.addVersion:
                     m = re.search(self.pattern, sourceBinaryName)
                     if m:
@@ -62,15 +81,14 @@ class Extract:
                         targetBinaryName,
                         targetBlockSize,
                         targetCodeSize,
-                        similarity)
+                        similarity,
+                        callee)
 
-                    numCol = 13
                     if self.addVersion:
                         m = re.search(self.pattern, targetBinaryName)
                         if m:
                             targetVersion = m.group(1)
                         row = row + (sourceVersion, targetVersion, )
-                        numCol = 15
 
                     insertArr.append(row)
                     insertLimitIndex += 1
