@@ -42,7 +42,7 @@ class Extract:
                 sourceBinaryName = function['binaryName']
                 sourceBlockSize = function['blockSize']if 'blockSize' in function else 0
                 sourceCodeSize = function['codeSize'] if 'codeSize' in function else 0
-                targetFunctionId = "%s%s" % (sourceBinaryId, sourceId)
+                targetFunctionId = sourceId
                 sourceVersion = ''
                 targetVersion = ''
 
@@ -66,7 +66,7 @@ class Extract:
                     similarity = clone['similarity']
                     targetBlockSize = clone['numBbs'] if 'numBbs' in clone else 0
                     targetCodeSize = clone['codeSize'] if 'codeSize' in clone else 0
-                    cloneFunctionId = "%s%s" % (targetBinaryId, targetId)
+                    cloneFunctionId = targetId
 
                     row = (self.id,
                         targetFunctionId,
