@@ -6,7 +6,7 @@ class ProcessData():
         self.table = table
         self.conn = conn
         self.cur = cur
-        self.limit = 550
+        self.limit = 500
         self.logger = logger
 
         self.type = type
@@ -53,7 +53,7 @@ class ProcessData():
         sizeArr.sort()
 
         l = len(sizeArr)
-        binSize = max(math.floor(len(sizeArr) / self.limit), 5)
+        binSize = max(math.ceil(len(sizeArr) / self.limit), 5)
 
         arr = []
         start = 0
@@ -307,17 +307,18 @@ def indexTable(conn, cur, table, logger):
     logger.info("Indexing Start")
     cur.execute(f'CREATE INDEX targetFunctionCodeSize{table} ON {table} (targetFunctionCodeSize)')
     cur.execute(f'CREATE INDEX targetFunctionBlockSize{table} ON {table} (targetFunctionBlockSize)')
+    cur.execute(f'CREATE INDEX target{table} ON {table} (targetFunctionId, targetFunctionBlockSize, targetFunctionCodeSize)')
+    cur.execute(f'CREATE INDEX clone{table} ON {table} (cloneFunctionId, cloneFunctionBlockSize, cloneFunctionCodeSize)')
     logger.info("Indexing End")
     conn.commit()
 
 def createFuncTable(conn, cur,functionsTableName, table, logger):
     cur.execute(f'''CREATE TABLE {functionsTableName} AS
-        SELECT t.targetFunctionId as functionId, t.targetFunctionCodeSize as codeSize, t.targetFunctionBlockSize as blockSize 
-        FROM {table} AS t 
-        WHERE _id IN (SELECT _id FROM {table} ORDER BY RANDOM() LIMIT 100000)
+        SELECT targetFunctionId as functionId, targetFunctionCodeSize as codeSize, targetFunctionBlockSize as blockSize 
+        FROM {table} group by targetFunctionId
         union
-        SELECT c.cloneFunctionId as functionId, c.cloneFunctionCodeSize as codeSize, c.cloneFunctionBlockSize as blockSize 
-        FROM {table} AS c 
-        WHERE _id IN (SELECT _id FROM {table} ORDER BY RANDOM() LIMIT 100000)''')
+        SELECT cloneFunctionId as functionId, cloneFunctionCodeSize as codeSize, cloneFunctionBlockSize as blockSize 
+        FROM {table} group by cloneFunctionId''')
+
     conn.commit()
     logger.info('Sample function table created')
