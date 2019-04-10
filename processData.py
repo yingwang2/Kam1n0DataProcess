@@ -6,7 +6,7 @@ class ProcessData():
         self.table = table
         self.conn = conn
         self.cur = cur
-        self.limit = 550
+        self.limit = 500
         self.logger = logger
 
         self.type = type
@@ -53,7 +53,7 @@ class ProcessData():
         sizeArr.sort()
 
         l = len(sizeArr)
-        binSize = max(math.floor(len(sizeArr) / self.limit), 5)
+        binSize = max(math.ceil(len(sizeArr) / self.limit), 5)
 
         arr = []
         start = 0
