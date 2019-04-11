@@ -4,6 +4,7 @@ import configparser
 import os
 import sqlite3
 import DataExtract
+import sys
 
 
 def createTables(table, functionsTableName, addVersion):
@@ -81,16 +82,28 @@ def createTables(table, functionsTableName, addVersion):
     createBinsTable(binsByBlockSize)
 
 
-logging.basicConfig(filename='Kam1n0DataProcess.log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='Kam1n0DataProcess.log', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 logger.info('Data process start')
+print('Data process start...')
 
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read(os.path.dirname(os.path.abspath('.'))+'/config.ini')
 
-dataDir = config.get('setting', 'path')
-logger.info('Data Directory: ' + dataDir)
-file_paths = os.listdir(dataDir)
+inputDataDir = config.get('setting', 'inputDataDir') + '/'
+logger.info('Input data directory: ' + inputDataDir)
+print('Input data directory: ' + inputDataDir)
+
+outputDir = config.get('setting', 'outputDir') + '/'
+if os.path.exists(outputDir):
+    logger.info('Output directory: ' + outputDir)
+    print('Output directory: ' + outputDir)
+else:
+    os.mkdir(outputDir)
+    logger.info('Output directory: ' + outputDir)
+    print('Output directory: ' + outputDir)
+
+file_paths = os.listdir(inputDataDir)
 
 database = config.get('setting', 'database')
 table = config.get('setting', 'table')
@@ -99,7 +112,7 @@ shouldCheck = config.get('binaryInfo', 'checkBinaryVersion') == 'True'
 pattern = config.get('binaryInfo', 'binaryPattern')
 addVersion = config.get('binaryInfo', 'addVersion') == 'True'
 
-conn = sqlite3.connect(f'{database}.db')
+conn = sqlite3.connect(f'{outputDir}/{database}.db')
 cur = conn.cursor()
 
 extractFile = DataExtract.Extract(cur, table, logger, pattern, addVersion)
@@ -108,15 +121,16 @@ if shouldCheck:
     for file_path in file_paths:
         if not file_path.endswith('.json'):
             continue
-        extractFile.check_binary_name(dataDir + file_path)
+        extractFile.check_binary_name(inputDataDir + file_path)
     binaries = extractFile.binaries
     if len(binaries) > 0:
-        print('Please check if the following binaries and versions are expected. If so, you can change the "checkBinaryVersion" as False in config.ini')
+        print('\nPlease check if the following binaries and versions are expected. If so, you can change the "checkBinaryVersion" as False in config.ini')
         for b in binaries:
             print(b)
     else:
         print(f'No binary is found by the regex {pattern}')
-    exit()
+    print('\n')
+    sys.exit(0)
 
 functionsTableName = f"Functions{table}"
 createTables(table, functionsTableName, addVersion)
@@ -124,9 +138,10 @@ createTables(table, functionsTableName, addVersion)
 for file_path in file_paths:
     if not file_path.endswith('.json'):
         continue
-    extractFile.extract(dataDir + file_path)
+    extractFile.extract(inputDataDir + file_path)
 conn.commit()
 
+print('Compute data start...')
 processData.indexTable(conn, cur, table, logger)
 processData.createFuncTable(conn, cur,functionsTableName, table, logger)
 
@@ -145,3 +160,5 @@ if addVersion:
 conn.commit()
 cur.close()
 conn.close()
+print('Compute data end')
+print('Data process end')
