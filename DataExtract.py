@@ -28,7 +28,6 @@ class Extract:
             lineHasRead = None
             while True:
                 if lineHasRead:
-                    self.logger.info('Contains line that has been read: ', lineHasRead)
                     line = lineHasRead
                 else:
                     line = f.readline()
@@ -48,9 +47,13 @@ class Extract:
                 targetVersion = ''
 
                 line2 = f.readline()  # read line of function calls
-                item2 = json.loads(line2)
-                if line2 and sourceId == str(item2['functionId']):
-                    callee = str(item2['callingFunctionIds'])
+                if line2:
+                    item2 = json.loads(line2)
+                    if 'functionId' in item2 and sourceId == str(item2['functionId']):
+                        callee = str(item2['callingFunctionIds'])
+                    else:
+                        callee = ''
+                        lineHasRead = line2
                 else:
                     callee = ''
                     lineHasRead = line2
