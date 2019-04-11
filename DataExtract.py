@@ -1,6 +1,7 @@
 import json
 import traceback
 import re
+import sys
 
 
 class Extract:
@@ -16,7 +17,6 @@ class Extract:
     def extract(self, file_path):
         self.logger.info('File Path: ' + file_path)
         self.logger.info('Data Extract Start')
-        print('Start to extract data from ' + file_path)
         f = open(file_path)
         numCol = 14
         if self.addVersion:
@@ -28,7 +28,7 @@ class Extract:
             lineHasRead = None
             while True:
                 if lineHasRead:
-                    print('contains line that has been read: ', lineHasRead)
+                    self.logger.info('Contains line that has been read: ', lineHasRead)
                     line = lineHasRead
                 else:
                     line = f.readline()
@@ -107,11 +107,10 @@ class Extract:
         except Exception:
             self.logger.error('Data Extract Error: ' + traceback.format_exc())
             print('Data Extract Error: ' + traceback.format_exc())
-            exit()
+            sys.exit(1)
         finally:
             f.close()
         self.logger.info('Data Extract End')
-        print('End to extract data from ' + file_path)
 
     def check_binary_name(self, file_path):
         regex = re.compile('"binaryName":' + '"(' + self.pattern + ')"')
@@ -123,6 +122,6 @@ class Extract:
         except Exception:
             self.logger.error('Data Extract Error: ' + traceback.format_exc())
             print('Data Extract Error: ' + traceback.format_exc())
-            exit()
+            sys.exit(1)
         finally:
             f.close()

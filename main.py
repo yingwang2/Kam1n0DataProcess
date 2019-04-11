@@ -5,6 +5,8 @@ import os
 import sqlite3
 import DataExtract
 import sys
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 
 def createTables(table, functionsTableName, addVersion):
@@ -16,7 +18,7 @@ def createTables(table, functionsTableName, addVersion):
                 f"please modify the database or the table name in config.ini"
             logger.error(s)
             print(s)
-            exit()
+            sys.exit(0)
 
     def createBinsTable(binsTable):
         cur.execute(f'''CREATE TABLE if not exists {binsTable}
@@ -81,27 +83,33 @@ def createTables(table, functionsTableName, addVersion):
     createBinsTable(binsByCodeSize)
     createBinsTable(binsByBlockSize)
 
-
-logging.basicConfig(filename='Kam1n0DataProcess.log', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+def printToConsole(s):
+    now = datetime.now()
+    t = now.strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{t} {s}')
+logging.basicConfig(
+                    level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    handlers=[RotatingFileHandler('Kam1n0DataProcess.log',maxBytes=10*1024*1024,backupCount=10)])
 logger = logging.getLogger()
 logger.info('Data process start')
-print('Data process start...')
+printToConsole('Data process start...')
 
 config = configparser.ConfigParser()
 config.read(os.path.dirname(os.path.abspath('.'))+'/config.ini')
 
 inputDataDir = config.get('setting', 'inputDataDir') + '/'
 logger.info('Input data directory: ' + inputDataDir)
-print('Input data directory: ' + inputDataDir)
+printToConsole('Input data directory: ' + inputDataDir)
 
 outputDir = config.get('setting', 'outputDir') + '/'
 if os.path.exists(outputDir):
     logger.info('Output directory: ' + outputDir)
-    print('Output directory: ' + outputDir)
+    printToConsole('Output directory: ' + outputDir)
 else:
     os.mkdir(outputDir)
     logger.info('Output directory: ' + outputDir)
-    print('Output directory: ' + outputDir)
+    printToConsole('Output directory: ' + outputDir)
 
 file_paths = os.listdir(inputDataDir)
 
@@ -138,10 +146,12 @@ createTables(table, functionsTableName, addVersion)
 for file_path in file_paths:
     if not file_path.endswith('.json'):
         continue
+    printToConsole('Start to extract data from ' + file_path)
     extractFile.extract(inputDataDir + file_path)
+    printToConsole('End to extract data from ' + file_path)
 conn.commit()
 
-print('Compute data start...')
+printToConsole('Compute data start...')
 processData.indexTable(conn, cur, table, logger)
 processData.createFuncTable(conn, cur,functionsTableName, table, logger)
 
@@ -160,5 +170,5 @@ if addVersion:
 conn.commit()
 cur.close()
 conn.close()
-print('Compute data end')
-print('Data process end')
+printToConsole('Compute data end')
+printToConsole('Data process end')
