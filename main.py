@@ -132,7 +132,7 @@ if shouldCheck:
         extractFile.check_binary_name(inputDataDir + file_path)
     binaries = extractFile.binaries
     if len(binaries) > 0:
-        print('\nPlease check if the following binaries and versions are expected. If so, you can change the "checkBinaryVersion" as False in config.ini')
+        print('\nPlease check if the following binaries and versions are expected. If so, you can change the "checkBinaryVersion" as False in config.ini and run the program again')
         for b in binaries:
             print(b)
     else:
