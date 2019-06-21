@@ -269,18 +269,6 @@ def createVersionTreemap(conn, cur, table, logger):
     cur.executemany(f'insert into {versionTable} values  (?, ?)', rows)
 
     versionTreemapTable = f"{table}VersionTreemap"
-    # cur.execute(f'''
-    #     create table {versionTable} as
-    #     select targetVersion as version from {table}
-    #     union
-    #     select cloneVersion as version from {table}
-    #     order by version
-    # ''')
-    # conn.commit()
-    # logger.info(f'Created table {versionTable}')
-    #
-    # cur.execute(f'alter table {versionTable} add column _id;')
-    # cur.execute(f'update {versionTable} set _id=rowId-1;')
     conn.commit()
     logger.info(f'Updated {versionTable}')
 
