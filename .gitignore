@@ -20,3 +20,7 @@ Data_1/
 *.json
 
 *.7z
+
+build/
+
+precomputation/
